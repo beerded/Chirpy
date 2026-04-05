@@ -5,17 +5,18 @@ import (
 	"net/http"
 	"log"
 	"strings"
+	"time"
+
+	"github.com/beerded/Chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
-
-func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 	const limit int = 140
 
 	type parameters struct {
-		Body string `json:"body"`
-	}
-	type returnVals struct {
-		CleanedBody		string	`json:"cleaned_body"`
+		Body		string		`json:"body"`
+		UserID		uuid.UUID	`json:"user_id"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -27,6 +28,7 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if length is over limit
 	if len(params.Body) > limit {
 		respondWithError(w, 400, "Chirp is too long")
 		return
@@ -36,8 +38,34 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 400, "Missing body in request JSON, make sure to add 'body:'")
 		return
 	}
-	respondWithJSON(w, http.StatusOK, returnVals{
-		CleanedBody: cleanLanguage(params.Body),
+	if params.UserID == uuid.Nil {
+		log.Printf("Input params struct:\n%+v", params)
+		respondWithError(w, 400, "Missing UserID in request JSON, make sure to add 'user_id:'")
+		return
+	}
+
+	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
+		Body:		cleanLanguage(params.Body),
+		UserID:		params.UserID,
+	})
+	if err != nil {
+		log.Printf("Unable to create chirp: %w", err)
+		respondWithError(w, 500, "Unable to save chirp")
+		return
+	}
+	type jsonChirp struct {
+		ID			uuid.UUID 	`json:"id"`
+		CreatedAt	time.Time	`json:"created_at"`
+		UpdatedAt	time.Time	`json:"updated_at"`
+		Body		string		`json:"body"`
+		UserID		uuid.UUID	`json:"user_id"`
+	}
+	respondWithJSON(w, http.StatusCreated, jsonChirp{
+		ID:			chirp.ID,
+		CreatedAt:	chirp.CreatedAt,
+		UpdatedAt:	chirp.UpdatedAt,
+		Body:		chirp.Body,
+		UserID:		chirp.UserID,
 	})
 }
 
