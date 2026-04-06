@@ -25,7 +25,7 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Fatalf("Error opening postgres database: %w", err)
+		log.Fatalf("Error opening postgres database: %v", err)
 	}
 	dbQueries := database.New(db)
 

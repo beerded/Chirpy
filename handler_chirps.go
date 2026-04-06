@@ -44,7 +44,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		UserID:		params.UserID,
 	})
 	if err != nil {
-		log.Printf("Unable to create chirp: %w", err)
+		log.Printf("Unable to create chirp: %v", err)
 		respondWithError(w, 500, "Unable to save chirp")
 		return
 	}
@@ -60,7 +60,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
 	chirps, err := cfg.db.GetAllChirps(r.Context())
 	if err != nil {
-		log.Printf("Error getting chirps: %w", err)
+		log.Printf("Error getting chirps: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -87,7 +87,7 @@ func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, r *http.Request
 
 	chirp, err := cfg.db.GetChirpByID(r.Context(), chirpID)
 	if err != nil {
-		log.Printf("Error getting chirp: %w", err)
+		log.Printf("Error getting chirp: %v", err)
 		respondWithError(w, http.StatusNotFound, "Chirp not found")
 		return
 	}

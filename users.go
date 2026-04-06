@@ -25,14 +25,14 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		log.Printf("Error decoding parameters: %w", err)
+		log.Printf("Error decoding parameters: %v", err)
 		w.WriteHeader(400)
 		return
 	}
 
 	dbUser, err := cfg.db.CreateUser(r.Context(), params.Email)
 	if err != nil {
-		log.Printf("Error creating user: %w", err)
+		log.Printf("Error creating user: %v", err)
 		w.WriteHeader(500)
 		return
 	}

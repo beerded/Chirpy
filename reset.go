@@ -17,7 +17,7 @@ func (cfg *apiConfig) handlerResetFileserverHits(w http.ResponseWriter, req *htt
 	err := cfg.db.DeleteAllUsers(req.Context())
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("Failed to write the database: %w", err)))
+		w.Write([]byte(fmt.Sprintf("Failed to write the database: %v", err)))
 		return
 	}
 	cfg.fileserverHits.Store(int32(0))
