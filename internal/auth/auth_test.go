@@ -3,29 +3,62 @@ package auth
 import "testing"
 
 func TestSmoketest(t *testing.T) {
+	password1 := "correctPassword"
+	password2 := "anotherCorrectPassword"
+	hash1, _ := HashPassword(password1)
+	hash2, _ := HashPassword(password2)
+
 	cases := []struct {
-		input		string
-		expected	bool
+		testName	string
+		password	string
+		hash		string
+		wantErr		bool
+		wantMatch	bool
 	}{
 		{
-			input:		"foobar",
-			expected:	true,
+			testName:		"Correct Password",
+			password:		password1,
+			hash:			hash1,
+			wantErr:		false,
+			wantMatch:		true,
 		},
 		{
-			input:		"",
-			expected:	true,
+			testName:		"Incorrect Password",
+			password:		"Not the right password",
+			hash:			hash1,
+			wantErr:		false,
+			wantMatch:		false,
+		},
+		{
+			testName:		"Other Password",
+			password:		password1,
+			hash:			hash2,
+			wantErr:		false,
+			wantMatch:		false,
+		},
+		{
+			testName:		"Empty Password",
+			password:		"",
+			hash:			hash1,
+			wantErr:		false,
+			wantMatch:		false,
+		},
+		{
+			testName:		"Invalid Hash",
+			password:		password1,
+			hash:			"invalid hash",
+			wantErr:		true,
+			wantMatch:		false,
 		},
 	}
 
 	for _, c := range cases {
-		hash, err := HashPassword(c.input)
-		if err != nil {
-			t.Errorf("Got an error when hashing %s: %v", c.input, err)
-			continue
+		ok, err := CheckPasswordHash(c.password, c.hash)
+		if (err != nil) != c.wantErr {
+			t.Errorf("TEST %v - CheckPasswordHash() had err = %v, want err = %v", c.testName, err, c.wantErr)
 		}
-		actual, err := CheckPasswordHash(c.input, hash)
-		if actual != c.expected {
-			t.Errorf("Hashes are expected to match but they do not")
+		if !c.wantErr && ok != c.wantMatch {
+			t.Errorf("TEST %v - CheckPasswordHash() had match = %v, want match = %v", c.testName, ok, c.wantMatch)
 		}
 	}
 }
