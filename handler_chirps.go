@@ -10,6 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type jsonChirp struct {
+	ID			uuid.UUID 	`json:"id"`
+	CreatedAt	time.Time	`json:"created_at"`
+	UpdatedAt	time.Time	`json:"updated_at"`
+	Body		string		`json:"body"`
+	UserID		uuid.UUID	`json:"user_id"`
+}
+
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body		string		`json:"body"`
@@ -40,13 +48,6 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, 500, "Unable to save chirp")
 		return
 	}
-	type jsonChirp struct {
-		ID			uuid.UUID 	`json:"id"`
-		CreatedAt	time.Time	`json:"created_at"`
-		UpdatedAt	time.Time	`json:"updated_at"`
-		Body		string		`json:"body"`
-		UserID		uuid.UUID	`json:"user_id"`
-	}
 	respondWithJSON(w, http.StatusCreated, jsonChirp{
 		ID:			chirp.ID,
 		CreatedAt:	chirp.CreatedAt,
@@ -54,4 +55,23 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		Body:		chirp.Body,
 		UserID:		chirp.UserID,
 	})
+}
+
+func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.db.GetAllChirps(r.Context())
+	if err != nil {
+		log.Printf("Error getting chirps: %w", err)
+		return
+	}
+	chirpList := []jsonChirp{}
+	for _, chirp := range chirps {
+		chirpList = append(chirpList, jsonChirp{
+			ID:			chirp.ID,
+			CreatedAt:	chirp.CreatedAt,
+			UpdatedAt:	chirp.UpdatedAt,
+			Body:		chirp.Body,
+			UserID:		chirp.UserID,
+		})
+	}
+	respondWithJSON(w, http.StatusOK, chirpList)
 }
