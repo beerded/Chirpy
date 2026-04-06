@@ -29,13 +29,13 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 	err := decoder.Decode(&params)
 	if err != nil {
 		log.Printf("Error decoding parameters: %s", err)
-		w.WriteHeader(400)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	cleanLanguage, err := validateChirp(params.Body)
 	if err != nil {
-		respondWithError(w, 400, err.Error())
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -61,6 +61,7 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 	chirps, err := cfg.db.GetAllChirps(r.Context())
 	if err != nil {
 		log.Printf("Error getting chirps: %w", err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	chirpList := []jsonChirp{}
@@ -74,4 +75,28 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 		})
 	}
 	respondWithJSON(w, http.StatusOK, chirpList)
+}
+
+func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		log.Printf("Error converting UUID in URL path to proper UUID")
+		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID")
+		return
+	}
+
+	chirp, err := cfg.db.GetChirpByID(r.Context(), chirpID)
+	if err != nil {
+		log.Printf("Error getting chirp: %w", err)
+		respondWithError(w, http.StatusNotFound, "Chirp not found")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, jsonChirp{
+		ID:			chirp.ID,
+		CreatedAt:	chirp.CreatedAt,
+		UpdatedAt:	chirp.UpdatedAt,
+		Body:		chirp.Body,
+		UserID:		chirp.UserID,
+	})
 }
