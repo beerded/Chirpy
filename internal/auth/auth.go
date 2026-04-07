@@ -1,8 +1,11 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"time"
+	"net/http"
+	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -11,6 +14,9 @@ import (
 
 type TokenType string
 const TokenTypeAccess TokenType = "chirpy-access"
+
+type AuthStringPrefix string
+const BearerPrefix AuthStringPrefix = "Bearer "
 
 func HashPassword(password string) (string, error) {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
@@ -73,4 +79,18 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("invalid user ID: %w", err)
 	}
 	return myUUID, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	authStrings := headers.Values("Authorization")
+	if len(authStrings) == 0 {
+		return "", errors.New("Authorization header missing")
+	}
+	for _, authString := range authStrings{
+		if strings.HasPrefix(authString, string(BearerPrefix)) {
+			token := strings.Trim(strings.TrimPrefix(authString, string(BearerPrefix)), " ")
+			return token, nil
+		}
+	}
+	return "", errors.New("Authorization header has no bearer or it is malformed")
 }

@@ -3,6 +3,7 @@ package auth
 import (
 	"testing"
 	"time"
+	"net/http"
 
 	"github.com/google/uuid"
 )
@@ -155,6 +156,74 @@ func TestJWTS(t *testing.T) {
 		}
 		if ss != c.wantUUID {
 			t.Errorf("TEST %v - ValidateJWT() wanted UUID %v, got %v\n", c.testName, c.wantUUID, ss)
+		}
+	}
+}
+
+func TestBearerToken(t *testing.T) {
+	cases := []struct {
+		testName	string
+		headerKey	string
+		headerVals	[]string
+		wantToken	string
+		wantErr		bool
+	}{
+		{
+			testName:		"Get correct Auth Header",
+			headerKey:		"Authorization",
+			headerVals:		[]string{"Bearer FOOBAR"},
+			wantToken:		"FOOBAR",
+			wantErr:		false,
+		},
+		{
+			testName:		"Get correct Auth Header, multiple auth headers",
+			headerKey:		"Authorization",
+			headerVals:		[]string{"Bearer FOOBAR", "swiss cheese"},
+			wantToken:		"FOOBAR",
+			wantErr:		false,
+		},
+		{
+			testName:		"Malformed auth string",
+			headerKey:		"Authorization",
+			headerVals:		[]string{"BearerFOOBAR"},
+			wantToken:		"",
+			wantErr:		true,
+		},
+		{
+			testName:		"Missing Authorization Header",
+			headerKey:		"Author",
+			headerVals:		[]string{"Bearer FOOBAR"},
+			wantToken:		"",
+			wantErr:		true,
+		},
+		{
+			testName:		"Extra whitespace in header",
+			headerKey:		"Authorization",
+			headerVals:		[]string{"Bearer     FOOBAR  "},
+			wantToken:		"FOOBAR",
+			wantErr:		false,
+		},
+		{
+			testName:		"Get correct Auth Header, multiple auth headers, first one invalid",
+			headerKey:		"Authorization",
+			headerVals:		[]string{"swiss cheese", "Bearer FOOBAR"},
+			wantToken:		"FOOBAR",
+			wantErr:		false,
+		},
+	}
+
+	for _, c := range cases {
+		h := http.Header(make(map[string][]string))
+		for _, val := range c.headerVals {
+			h.Add(c.headerKey, val)
+		}
+		token, err := GetBearerToken(h)
+		if (err != nil) != c.wantErr {
+			t.Errorf("TEST %v - GetBearerToken() had err = %v, want err = %v\n", c.testName, err, c.wantErr)
+			return
+		}
+		if token != c.wantToken {
+			t.Errorf("TEST %v - GetBearerToken() expected token: %v, got token %v\n", c.testName, c.wantToken, token)
 		}
 	}
 }
