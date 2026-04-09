@@ -8,18 +8,19 @@ import (
 	"time"
 
 	"github.com/beerded/Chirpy/internal/auth"
+	"github.com/beerded/Chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email		string	`json:"email"`
 		Password	string	`json:"password"`
-		ExpiresIn	int64	`json:"expires_in_seconds"`
 	}
 
 	type response struct {
 		User
-		Token		string	`json:"token"`
+		Token			string	`json:"token"`
+		RefreshToken	string	`json:"refresh_token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -47,16 +48,18 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// default timeout is 1 hour. If someone sets timeout to be longer than an
-	// hour, set the duration to 1 hour instead
-	expiration := 1 * time.Hour
-	if params.ExpiresIn > 0 && params.ExpiresIn < 3600 {
-		expiration = time.Duration(params.ExpiresIn)*time.Second
-	}
-
-	accessToken, err := auth.MakeJWT(dbUser.ID, cfg.jwtSecret, expiration)
+	accessToken, err := auth.MakeJWT(dbUser.ID, cfg.jwtSecret, time.Hour)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, fmt.Sprintf("Could not issue JWT: %v", err))
+		respondWithError(w, http.StatusUnauthorized, fmt.Sprintf("Could not issue access JWT: %v", err))
+		return
+	}
+	refreshToken := auth.MakeRefreshToken()
+	err = cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:		refreshToken,
+		UserID:		dbUser.ID,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Could not create refresh token: %v", err))
 		return
 	}
 
@@ -67,6 +70,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 			UpdatedAt:	dbUser.UpdatedAt,
 			Email:		dbUser.Email,
 		},
-		Token:	accessToken,
+		Token:			accessToken,
+		RefreshToken: 	refreshToken,
 	})
 }

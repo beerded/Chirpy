@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"crypto/rand"
 	"errors"
+	"encoding/hex"
 	"fmt"
 	"time"
 	"net/http"
@@ -94,3 +96,10 @@ func GetBearerToken(headers http.Header) (string, error) {
 	}
 	return "", errors.New("Authorization header has no bearer or it is malformed")
 }
+
+func MakeRefreshToken() string {
+	key := make([]byte, 32)
+	rand.Read(key)
+	return hex.EncodeToString(key)
+}
+
