@@ -1,12 +1,13 @@
 package main
 
 import (
-	"log"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/beerded/Chirpy/internal/database"
+	"github.com/beerded/Chirpy/internal/auth"
 	"github.com/google/uuid"
 )
 
@@ -21,17 +22,27 @@ type jsonChirp struct {
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Body		string		`json:"body"`
-		UserID		uuid.UUID	`json:"user_id"`
+	}
+
+	tokenString, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, fmt.Sprintf("Could not find JWT: %v",err))
+		return
+	}
+	userID, err := auth.ValidateJWT(tokenString, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, fmt.Sprintf("Invalid auth token: %v", err))
+		return
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
-		log.Printf("Error decoding parameters: %s", err)
-		w.WriteHeader(http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, "Could not decode request parameters")
 		return
 	}
+
 
 	cleanLanguage, err := validateChirp(params.Body)
 	if err != nil {
@@ -41,11 +52,10 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 
 	chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body:		cleanLanguage,
-		UserID:		params.UserID,
+		UserID:		userID,
 	})
 	if err != nil {
-		log.Printf("Unable to create chirp: %v", err)
-		respondWithError(w, 500, "Unable to save chirp")
+		respondWithError(w, http.StatusInternalServerError, "Unable to save chirp")
 		return
 	}
 	respondWithJSON(w, http.StatusCreated, jsonChirp{
@@ -60,8 +70,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
 	chirps, err := cfg.db.GetAllChirps(r.Context())
 	if err != nil {
-		log.Printf("Error getting chirps: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, "Error getting chirps")
 		return
 	}
 	chirpList := []jsonChirp{}
@@ -80,14 +89,12 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
 	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
 	if err != nil {
-		log.Printf("Error converting UUID in URL path to proper UUID")
 		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID")
 		return
 	}
 
 	chirp, err := cfg.db.GetChirpByID(r.Context(), chirpID)
 	if err != nil {
-		log.Printf("Error getting chirp: %v", err)
 		respondWithError(w, http.StatusNotFound, "Chirp not found")
 		return
 	}

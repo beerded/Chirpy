@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"net/http"
+	"fmt"
 	"log"
+	"net/http"
+	"time"
 
 	"github.com/beerded/Chirpy/internal/auth"
 )
@@ -12,6 +14,12 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Email		string	`json:"email"`
 		Password	string	`json:"password"`
+		ExpiresIn	int64	`json:"expires_in_seconds"`
+	}
+
+	type response struct {
+		User
+		Token		string	`json:"token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -39,10 +47,26 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, User{
-		ID:			dbUser.ID,
-		CreatedAt:	dbUser.CreatedAt,
-		UpdatedAt:	dbUser.UpdatedAt,
-		Email:		dbUser.Email,
+	// default timeout is 1 hour. If someone sets timeout to be longer than an
+	// hour, set the duration to 1 hour instead
+	expiration := 1 * time.Hour
+	if params.ExpiresIn > 0 && params.ExpiresIn < 3600 {
+		expiration = time.Duration(params.ExpiresIn)*time.Second
+	}
+
+	accessToken, err := auth.MakeJWT(dbUser.ID, cfg.jwtSecret, expiration)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, fmt.Sprintf("Could not issue JWT: %v", err))
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response{
+		User: User{
+			ID:			dbUser.ID,
+			CreatedAt:	dbUser.CreatedAt,
+			UpdatedAt:	dbUser.UpdatedAt,
+			Email:		dbUser.Email,
+		},
+		Token:	accessToken,
 	})
 }
