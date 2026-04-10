@@ -13,10 +13,11 @@ import (
 )
 
 type User struct {
-	ID			uuid.UUID	`json:"id"`
-	CreatedAt	time.Time	`json:"created_at"`
-	UpdatedAt	time.Time	`json:"updated_at"`
-	Email		string		`json:"email"`
+	ID				uuid.UUID	`json:"id"`
+	CreatedAt		time.Time	`json:"created_at"`
+	UpdatedAt		time.Time	`json:"updated_at"`
+	Email			string		`json:"email"`
+	IsChirpyRed		bool		`json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -53,10 +54,11 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	user := User{
-		ID:			dbUser.ID,
-		CreatedAt:	dbUser.CreatedAt,
-		UpdatedAt:	dbUser.UpdatedAt,
-		Email:		dbUser.Email,
+		ID:				dbUser.ID,
+		CreatedAt:		dbUser.CreatedAt,
+		UpdatedAt:		dbUser.UpdatedAt,
+		Email:			dbUser.Email,
+		IsChirpyRed:	dbUser.IsChirpyRed,
 	}
 	respondWithJSON(w, http.StatusCreated, user)
 }
@@ -110,9 +112,47 @@ func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	respondWithJSON(w, http.StatusOK, User{
-		ID:			dbUser.ID,
-		CreatedAt:	dbUser.CreatedAt,
-		UpdatedAt:	dbUser.UpdatedAt,
-		Email:		dbUser.Email,
+		ID:				dbUser.ID,
+		CreatedAt:		dbUser.CreatedAt,
+		UpdatedAt:		dbUser.UpdatedAt,
+		Email:			dbUser.Email,
+		IsChirpyRed:	dbUser.IsChirpyRed,
 	})
+}
+
+func (cfg *apiConfig) handlerUpgradeUser(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Event			string	`json:"event"`
+		Data			struct {
+			UserID		string	`json:"user_id"`
+		} `json:"data"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Could not decode request parameters")
+		return
+	}
+
+	if params.Event != "user.upgraded" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	userID, err := uuid.Parse(params.Data.UserID)
+	if err != nil {
+		log.Printf("Could not find user %v", userID)
+		respondWithError(w, http.StatusNotFound, "Could not find user")
+		return
+	}
+	_, err = cfg.db.UpgradeUserToChirpyRed(r.Context(), userID)
+	if err != nil {
+		log.Printf("Could not find user and got err %v", err)
+		respondWithError(w, http.StatusNotFound, "Could not find user")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
