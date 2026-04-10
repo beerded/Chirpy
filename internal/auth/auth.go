@@ -19,6 +19,7 @@ const TokenTypeAccess TokenType = "chirpy-access"
 
 type AuthStringPrefix string
 const BearerPrefix AuthStringPrefix = "Bearer "
+const ApiKeyPrefix AuthStringPrefix = "ApiKey "
 
 func HashPassword(password string) (string, error) {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
@@ -83,18 +84,26 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	return myUUID, nil
 }
 
-func GetBearerToken(headers http.Header) (string, error) {
+func getAuthToken(headers http.Header, prefix string) (string, error) {
 	authStrings := headers.Values("Authorization")
 	if len(authStrings) == 0 {
 		return "", errors.New("Authorization header missing")
 	}
 	for _, authString := range authStrings{
-		if strings.HasPrefix(authString, string(BearerPrefix)) {
-			token := strings.Trim(strings.TrimPrefix(authString, string(BearerPrefix)), " ")
+		if strings.HasPrefix(authString, prefix) {
+			token := strings.Trim(strings.TrimPrefix(authString, prefix), " ")
 			return token, nil
 		}
 	}
-	return "", errors.New("Authorization header has no bearer or it is malformed")
+	return "", fmt.Errorf("Authorization header missing '%v' or it is malformed", prefix)
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	return getAuthToken(headers, string(BearerPrefix))
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+	return getAuthToken(headers, string(ApiKeyPrefix))
 }
 
 func MakeRefreshToken() string {
