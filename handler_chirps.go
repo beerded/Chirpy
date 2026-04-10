@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/beerded/Chirpy/internal/database"
@@ -88,9 +89,9 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 	var dbChirps []database.Chirp
 
 	if authorID != uuid.Nil {
-		dbChirps, err = cfg.db.GetAllChirps(r.Context())
-	} else {
 		dbChirps, err = cfg.db.GetChirpsByAuthorID(r.Context(), authorID)
+	} else {
+		dbChirps, err = cfg.db.GetAllChirps(r.Context())
 	}
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Error getting chirps")
@@ -99,12 +100,19 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 
 	chirpList := []jsonChirp{}
 	for _, chirp := range dbChirps {
+		fmt.Println("Appended a Chirp")
 		chirpList = append(chirpList, jsonChirp{
 			ID:			chirp.ID,
 			CreatedAt:	chirp.CreatedAt,
 			UpdatedAt:	chirp.UpdatedAt,
 			Body:		chirp.Body,
 			UserID:		chirp.UserID,
+		})
+	}
+	s := r.URL.Query().Get("sort")
+	if s == "desc" {
+		sort.Slice(chirpList, func(i, j int) bool {
+			return chirpList[i].CreatedAt.After(chirpList[j].CreatedAt)
 		})
 	}
 	respondWithJSON(w, http.StatusOK, chirpList)
