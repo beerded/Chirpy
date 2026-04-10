@@ -100,7 +100,6 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 
 	chirpList := []jsonChirp{}
 	for _, chirp := range dbChirps {
-		fmt.Println("Appended a Chirp")
 		chirpList = append(chirpList, jsonChirp{
 			ID:			chirp.ID,
 			CreatedAt:	chirp.CreatedAt,
