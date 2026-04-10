@@ -43,7 +43,6 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-
 	cleanLanguage, err := validateChirp(params.Body)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
@@ -67,14 +66,39 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+func getAuthorIDFromRequest(r *http.Request) (uuid.UUID, error) {
+	authorIDString := r.URL.Query().Get("author_id")
+	if authorIDString == "" {
+		return uuid.Nil, nil
+	}
+	authorID, err := uuid.Parse(authorIDString)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return authorID, nil
+}
+
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := cfg.db.GetAllChirps(r.Context())
+	authorID, err := getAuthorIDFromRequest(r)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Invalid author ID: %v", err))
+		return
+	}
+
+	var dbChirps []database.Chirp
+
+	if authorID != uuid.Nil {
+		dbChirps, err = cfg.db.GetAllChirps(r.Context())
+	} else {
+		dbChirps, err = cfg.db.GetChirpsByAuthorID(r.Context(), authorID)
+	}
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Error getting chirps")
 		return
 	}
+
 	chirpList := []jsonChirp{}
-	for _, chirp := range chirps {
+	for _, chirp := range dbChirps {
 		chirpList = append(chirpList, jsonChirp{
 			ID:			chirp.ID,
 			CreatedAt:	chirp.CreatedAt,
