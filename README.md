@@ -1,4 +1,4 @@
-# Chirpy
+# 🐥 Chirpy
 Twitter-like app for [boot.dev](https://boot.dev) course on http servers in Go.
 I mainly did it to improve my golang skills and general http webserver knowledge
 
@@ -10,7 +10,7 @@ It's basically mimicing a site that allows posting short messages to a social me
 * Postgresql 15
 * A .env file to store environment variables
 
-## Installation:
+## 🛠️ Installation:
 Install with `go get https://github.com/beerded/Chirpy` (yeah I know, it shouldn't be capitalized)
 
 ### Installing Go:
@@ -28,20 +28,82 @@ This project makes use of several environment variables, namely:
 - "JWT\_SECRET": This is the secret string that is used to identify individual users and create their JWTs.
 - "POLKA\_KEY": Used for authenticating the webhook clients for the endpoint that upgrades users to "Chirpy Red" mode
 
-## API Documentation
+## 🧙 API Documentation
 
-### Endpoint: GET `/api/chirps` **Retrieve a list of chirps**
-### Endpoint: GET `/api/chirps/{id}` **Retrieve a single chirp by ID**
-### Endpoint: POST `/api/chirps` **Create a chirp**
-### Endpoint: DELETE `/api/chirps/{id}` **Delete a single chirp by ID**
+### **Chirps** 
+Interact with microblogging posts, known as "Chirps"
+##### **GET `/api/chirps`**
+Retrieve multiple chirps
+###### Parameters
+| Name           | Optional (Y/N) | Description                   |
+| -------------- | -------------- | ----------------------------- |
+| **author_id**<br> string UUID<br> *(query)*        | Y              | Allows filtering by author-id (default is to list all chirps) |
+| **sort**<br> string \["asc","desc"\]<br> *(query)* | Y              | Sort results in ascending or descending order (default is asending)|
+###### Responses
+Content-Type: `application/json`
+<table>
+  <tr>
+    <td>Code</td>
+    <td>Description</td>
+  </tr>
+  <tr>
+    <td>200</td>
+    <td>Successful Operation</br>Example output:
+      
+```json
+{
+  [
+    {
+      "id": "8bb3f27d-1d5d-4be7-8913-9e792544be39",
+      "created_at": "2020-01-01 09:38:21.325756",
+      "updated_at": "2020-01-01 09:38:21.325756",
+      "body": "Happy New Year everyone!",
+      "user_id": "98d1c380-fccc-4834-99cb-ce96a7d26aba"
+    },
+    {
+      "id": "8bb3f27d-1d5d-4be7-8913-9e792544be39"
+      "created_at": "2020-01-01 09:43:37.315756",
+      "updated_at": "2020-01-01 09:43:37.315756",
+      "body": "Happy New Year to you too Steve!",
+      "user_id": "7adfc380-aeec-1894-44aa-ce96a7d26aba"
+    }
+  ]
+}
+```
+   </td>
+  </tr>
+  <tr>
+    <td>404</td>
+    <td>Not Found</br>Example output:
 
-### Endpoint: POST `/api/login` **Login as a particular user**
+```json
+{
+  "error": "Could not find user"
+}
+```
+  </tr>
+</table>
+    
+### Endpoint: GET `/api/chirps/{id}`
+**Retrieve a single chirp by ID**
+### Endpoint: POST `/api/chirps`
+**Create a chirp**
+### Endpoint: DELETE `/api/chirps/{id}`
+**Delete a single chirp by ID**
 
-### Endpoint: PUT `/api/users` **Edit your user data**
-### Endpoint: POST `/api/users` **Create a new user**
+### Endpoint: POST `/api/login`
+**Login as a particular user**
 
-### Endpoint: POST `/api/refresh` **Refresh your access token**
-### Endpoint: POST `/api/revoke` **Revoke your refresh token**
+### Endpoint: PUT `/api/users`
+**Edit your user data**
+### Endpoint: POST `/api/users`
+**Create a new user**
 
-### Endpoint: POST `/api/polka/webhooks` **Send an event to the chirpy backend via webhook**
+### Endpoint: POST `/api/refresh`
+**Refresh your access token**
+### Endpoint: POST `/api/revoke`
+**Revoke your refresh token**
+
+### Endpoint: POST `/api/polka/webhooks`
+**Send an event to the chirpy backend via webhook**
 
